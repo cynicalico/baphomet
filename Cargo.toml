@@ -1,0 +1,9 @@
+[package]
+name = "baphomet"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gl46 = "0.2.1"
+glfw = "0.59.0"
+ultraviolet = "0.9.2"
