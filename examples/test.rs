@@ -1,30 +1,14 @@
 use baphomet::{glm, hlgl};
 use gl::types::{GLsizei, GLsizeiptr};
 use glfw::{Action, Context, Key};
+use std::error::Error;
 
-const VERT_SRC: &str = "\
-#version 330
-layout (location = 0) in vec3 aPos;
-
-uniform float x_off;
-uniform float y_off;
-uniform mat4 mvp;
-
-void main() {
-    gl_Position = mvp * vec4(aPos.x + x_off, aPos.y + y_off, aPos.z, 1.0);
+fn build_shader() -> Result<hlgl::Shader, Box<dyn Error>> {
+    hlgl::ShaderBuilder::default()
+        .with_src_file(hlgl::ShaderKind::Vertex, "examples/res/basic.vert")?
+        .with_src_file(hlgl::ShaderKind::Fragment, "examples/res/basic.frag")?
+        .try_link()
 }
-";
-
-const FRAG_SRC: &str = "\
-#version 330 core
-in vec3 aColor;
-
-out vec4 FragColor;
-
-void main() {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
-}
-";
 
 fn main() {
     colog::init();
@@ -62,11 +46,7 @@ fn main() {
     };
     log::debug!("OpenGL v{}.{}", gl_version_major, gl_version_minor);
 
-    let mut shader = hlgl::ShaderBuilder::default()
-        .with_src(hlgl::ShaderKind::Vertex, VERT_SRC)
-        .with_src(hlgl::ShaderKind::Fragment, FRAG_SRC)
-        .try_link()
-        .expect("Failed to link shader.");
+    let mut shader = build_shader().expect("Failed to build shader.");
 
     #[rustfmt::skip]
     let vertices: Vec<f32> = vec![

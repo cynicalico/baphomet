@@ -1,6 +1,7 @@
 use gl::types::{GLint, GLsizei, GLuint};
 use pastey::paste;
 use std::collections::HashMap;
+use std::error::Error;
 use std::ffi::CString;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -112,6 +113,10 @@ macro_rules! uniform1_impl {
     };
 }
 
+uniform1_impl!(1f, f32);
+uniform1_impl!(1i, i32);
+uniform1_impl!(1ui, u32);
+
 macro_rules! uniform2_impl {
     ($type_:tt, $value_type:ty) => {
         paste! {
@@ -125,6 +130,10 @@ macro_rules! uniform2_impl {
         }
     };
 }
+
+uniform2_impl!(2f, f32);
+uniform2_impl!(2i, i32);
+uniform2_impl!(2ui, u32);
 
 macro_rules! uniform3_impl {
     ($type_:tt, $value_type:ty) => {
@@ -140,6 +149,10 @@ macro_rules! uniform3_impl {
     };
 }
 
+uniform3_impl!(3f, f32);
+uniform3_impl!(3i, i32);
+uniform3_impl!(3ui, u32);
+
 macro_rules! uniform4_impl {
     ($type_:tt, $value_type:ty) => {
         paste! {
@@ -153,6 +166,10 @@ macro_rules! uniform4_impl {
         }
     };
 }
+
+uniform4_impl!(4f, f32);
+uniform4_impl!(4i, i32);
+uniform4_impl!(4ui, u32);
 
 macro_rules! uniform_vec_impl {
     ($type_:tt, $glm_type:ty) => {
@@ -168,35 +185,6 @@ macro_rules! uniform_vec_impl {
     };
 }
 
-macro_rules! uniform_mat_impl {
-    ($type_:tt, $glm_type:ty) => {
-        paste! {
-            impl UniformMat for $glm_type {
-                fn set(&self, loc: GLint, transpose: bool) {
-                    unsafe {
-                        gl::[<Uniform Matrix $type_>](loc, 1, transpose.into(), self.as_ptr().cast());
-                    }
-                }
-            }
-        }
-    };
-}
-
-uniform1_impl!(1f, f32);
-uniform2_impl!(2f, f32);
-uniform3_impl!(3f, f32);
-uniform4_impl!(4f, f32);
-
-uniform1_impl!(1i, i32);
-uniform2_impl!(2i, i32);
-uniform3_impl!(3i, i32);
-uniform4_impl!(4i, i32);
-
-uniform1_impl!(1ui, u32);
-uniform2_impl!(2ui, u32);
-uniform3_impl!(3ui, u32);
-uniform4_impl!(4ui, u32);
-
 uniform_vec_impl!(1fv, glm::TVec1<f32>);
 uniform_vec_impl!(2fv, glm::TVec2<f32>);
 uniform_vec_impl!(3fv, glm::TVec3<f32>);
@@ -211,6 +199,20 @@ uniform_vec_impl!(1uiv, glm::TVec1<u32>);
 uniform_vec_impl!(2uiv, glm::TVec2<u32>);
 uniform_vec_impl!(3uiv, glm::TVec3<u32>);
 uniform_vec_impl!(4uiv, glm::TVec4<u32>);
+
+macro_rules! uniform_mat_impl {
+    ($type_:tt, $glm_type:ty) => {
+        paste! {
+            impl UniformMat for $glm_type {
+                fn set(&self, loc: GLint, transpose: bool) {
+                    unsafe {
+                        gl::[<Uniform Matrix $type_>](loc, 1, transpose.into(), self.as_ptr().cast());
+                    }
+                }
+            }
+        }
+    };
+}
 
 uniform_mat_impl!(2fv, glm::TMat2<f32>);
 uniform_mat_impl!(3fv, glm::TMat3<f32>);
@@ -244,6 +246,14 @@ impl Display for ShaderKind {
 }
 
 impl ShaderBuilder {
+    pub fn with_src_file(
+        self,
+        kind: ShaderKind,
+        path: impl AsRef<std::path::Path>,
+    ) -> std::io::Result<Self> {
+        std::fs::read_to_string(path).map(|src| self.with_src(kind, &src))
+    }
+
     pub fn with_src(mut self, kind: ShaderKind, src: &str) -> Self {
         let id: u32 = unsafe {
             let gl_kind = match kind {
@@ -270,7 +280,7 @@ impl ShaderBuilder {
         self
     }
 
-    pub fn try_link(self) -> Option<Shader> {
+    pub fn try_link(self) -> Result<Shader, Box<dyn Error>> {
         let id = unsafe {
             let id = gl::CreateProgram();
 
@@ -289,12 +299,12 @@ impl ShaderBuilder {
         }
 
         if id != 0 {
-            Some(Shader {
+            Ok(Shader {
                 id,
                 uniform_locs: Default::default(),
             })
         } else {
-            None
+            Err(Box::from("Failed to link shader module"))
         }
     }
 
