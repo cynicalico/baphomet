@@ -8,6 +8,22 @@ use std::str::FromStr;
 
 const INFO_LOG_MAX_LEN: usize = 1024;
 
+pub trait Uniform1<T> {
+    fn set(loc: GLint, v0: T);
+}
+
+pub trait Uniform2<T> {
+    fn set(loc: GLint, v0: T, v1: T);
+}
+
+pub trait Uniform3<T> {
+    fn set(loc: GLint, v0: T, v1: T, v2: T);
+}
+
+pub trait Uniform4<T> {
+    fn set(loc: GLint, v0: T, v1: T, v2: T, v3: T);
+}
+
 pub trait UniformVec {
     fn set(&self, loc: GLint);
 }
@@ -29,32 +45,28 @@ impl Shader {
         }
     }
 
-    pub fn uniform_1<T: Scalar>(&mut self, name: &str, v0: T)
-    where
-        glm::TVec1<T>: UniformVec,
-    {
-        self.uniform_vec(name, &glm::vec1(v0));
+    pub fn uniform_1<T: Uniform1<T>>(&mut self, name: &str, v0: T) {
+        if let Some(loc) = self.get_uniform_loc(name) {
+            <T as Uniform1<T>>::set(*loc, v0);
+        }
     }
 
-    pub fn uniform_2<T: Scalar>(&mut self, name: &str, v0: T, v1: T)
-    where
-        glm::TVec2<T>: UniformVec,
-    {
-        self.uniform_vec(name, &glm::vec2(v0, v1));
+    pub fn uniform_2<T: Uniform2<T>>(&mut self, name: &str, v0: T, v1: T) {
+        if let Some(loc) = self.get_uniform_loc(name) {
+            <T as Uniform2<T>>::set(*loc, v0, v1);
+        }
     }
 
-    pub fn uniform_3<T: Scalar>(&mut self, name: &str, v0: T, v1: T, v2: T)
-    where
-        glm::TVec3<T>: UniformVec,
-    {
-        self.uniform_vec(name, &glm::vec3(v0, v1, v2));
+    pub fn uniform_3<T: Uniform3<T>>(&mut self, name: &str, v0: T, v1: T, v2: T) {
+        if let Some(loc) = self.get_uniform_loc(name) {
+            <T as Uniform3<T>>::set(*loc, v0, v1, v2);
+        }
     }
 
-    pub fn uniform_4<T: Scalar>(&mut self, name: &str, v0: T, v1: T, v2: T, v3: T)
-    where
-        glm::TVec4<T>: UniformVec,
-    {
-        self.uniform_vec(name, &glm::vec4(v0, v1, v2, v3));
+    pub fn uniform_4<T: Uniform4<T>>(&mut self, name: &str, v0: T, v1: T, v2: T, v3: T) {
+        if let Some(loc) = self.get_uniform_loc(name) {
+            <T as Uniform4<T>>::set(*loc, v0, v1, v2, v3);
+        }
     }
 
     pub fn uniform_vec<T: UniformVec>(&mut self, name: &str, value: &T) {
@@ -70,8 +82,7 @@ impl Shader {
     }
 
     fn get_uniform_loc(&mut self, name: &str) -> &Option<GLint> {
-        self
-            .uniform_locs
+        self.uniform_locs
             .entry(name.to_owned())
             .or_insert_with(|| unsafe {
                 let loc = gl::GetUniformLocation(
@@ -86,6 +97,62 @@ impl Shader {
                 }
             })
     }
+}
+
+macro_rules! uniform1_impl {
+    ($type_:tt, $value_type:ty) => {
+        paste! {
+            impl Uniform1<$value_type> for $value_type {
+                fn set(loc: GLint, v0: $value_type) {
+                    unsafe {
+                        gl::[<Uniform $type_>](loc, v0);
+                    }
+                }
+            }
+        }
+    };
+}
+
+macro_rules! uniform2_impl {
+    ($type_:tt, $value_type:ty) => {
+        paste! {
+            impl Uniform2<$value_type> for $value_type {
+                fn set(loc: GLint, v0: $value_type, v1: $value_type) {
+                    unsafe {
+                        gl::[<Uniform $type_>](loc, v0, v1);
+                    }
+                }
+            }
+        }
+    };
+}
+
+macro_rules! uniform3_impl {
+    ($type_:tt, $value_type:ty) => {
+        paste! {
+            impl Uniform3<$value_type> for $value_type {
+                fn set(loc: GLint, v0: $value_type, v1: $value_type, v2: $value_type) {
+                    unsafe {
+                        gl::[<Uniform $type_>](loc, v0, v1, v2);
+                    }
+                }
+            }
+        }
+    };
+}
+
+macro_rules! uniform4_impl {
+    ($type_:tt, $value_type:ty) => {
+        paste! {
+            impl Uniform4<$value_type> for $value_type {
+                fn set(loc: GLint, v0: $value_type, v1: $value_type, v2: $value_type, v3: $value_type) {
+                    unsafe {
+                        gl::[<Uniform $type_>](loc, v0, v1, v2, v3);
+                    }
+                }
+            }
+        }
+    };
 }
 
 macro_rules! uniform_vec_impl {
@@ -115,6 +182,21 @@ macro_rules! uniform_mat_impl {
         }
     };
 }
+
+uniform1_impl!(1f, f32);
+uniform2_impl!(2f, f32);
+uniform3_impl!(3f, f32);
+uniform4_impl!(4f, f32);
+
+uniform1_impl!(1i, i32);
+uniform2_impl!(2i, i32);
+uniform3_impl!(3i, i32);
+uniform4_impl!(4i, i32);
+
+uniform1_impl!(1ui, u32);
+uniform2_impl!(2ui, u32);
+uniform3_impl!(3ui, u32);
+uniform4_impl!(4ui, u32);
 
 uniform_vec_impl!(1fv, glm::TVec1<f32>);
 uniform_vec_impl!(2fv, glm::TVec2<f32>);

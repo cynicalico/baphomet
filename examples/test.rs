@@ -6,10 +6,12 @@ const VERT_SRC: &str = "\
 #version 330
 layout (location = 0) in vec3 aPos;
 
+uniform float x_off;
+uniform float y_off;
 uniform mat4 mvp;
 
 void main() {
-    gl_Position = mvp * vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    gl_Position = mvp * vec4(aPos.x + x_off, aPos.y + y_off, aPos.z, 1.0);
 }
 ";
 
@@ -140,6 +142,9 @@ fn main() {
                 1.0,
             ),
         );
+
+        shader.uniform_1("x_off", ((glfw.get_time() * 5.0) as f32).sin() * 50.0);
+        shader.uniform_1("y_off", ((glfw.get_time() * 5.0) as f32).cos() * 50.0);
 
         unsafe {
             gl::BindVertexArray(vao);
