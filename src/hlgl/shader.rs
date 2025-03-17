@@ -59,18 +59,18 @@ impl Shader {
 
     pub fn uniform_vec<T: UniformVec>(&mut self, name: &str, value: &T) {
         if let Some(loc) = self.get_uniform_loc(name) {
-            value.set(loc);
+            value.set(*loc);
         }
     }
 
     pub fn uniform_mat<T: UniformMat>(&mut self, name: &str, transpose: bool, value: &T) {
         if let Some(loc) = self.get_uniform_loc(name) {
-            value.set(loc, transpose);
+            value.set(*loc, transpose);
         }
     }
 
-    fn get_uniform_loc(&mut self, name: &str) -> Option<GLint> {
-        *self
+    fn get_uniform_loc(&mut self, name: &str) -> &Option<GLint> {
+        self
             .uniform_locs
             .entry(name.to_owned())
             .or_insert_with(|| unsafe {
