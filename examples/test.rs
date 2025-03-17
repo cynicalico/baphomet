@@ -75,7 +75,7 @@ fn main() {
     ];
     #[rustfmt::skip]
     let indices: Vec<u32> = vec![
-        0, 1, 3, 
+        0, 1, 3,
         1, 2, 3
     ];
 
@@ -125,21 +125,23 @@ fn main() {
         unsafe {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
+        }
 
-            shader.use_program();
-            shader.uniform_mat4fv(
-                "mvp",
-                false,
-                &glm::ortho(
-                    0.0,
-                    window.get_size().0 as f32,
-                    window.get_size().1 as f32,
-                    0.0,
-                    -1.0,
-                    1.0,
-                ),
-            );
+        shader.use_program();
+        shader.uniform_mat(
+            "mvp",
+            false,
+            &glm::ortho(
+                0.0,
+                window.get_size().0 as f32,
+                window.get_size().1 as f32,
+                0.0,
+                -1.0,
+                1.0,
+            ),
+        );
 
+        unsafe {
             gl::BindVertexArray(vao);
             gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, std::ptr::null());
         }
