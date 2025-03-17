@@ -1,5 +1,4 @@
 use gl::types::{GLint, GLsizei, GLuint};
-use glm::Scalar;
 use pastey::paste;
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -47,25 +46,25 @@ impl Shader {
 
     pub fn uniform_1<T: Uniform1<T>>(&mut self, name: &str, v0: T) {
         if let Some(loc) = self.get_uniform_loc(name) {
-            <T as Uniform1<T>>::set(*loc, v0);
+            T::set(*loc, v0);
         }
     }
 
     pub fn uniform_2<T: Uniform2<T>>(&mut self, name: &str, v0: T, v1: T) {
         if let Some(loc) = self.get_uniform_loc(name) {
-            <T as Uniform2<T>>::set(*loc, v0, v1);
+            T::set(*loc, v0, v1);
         }
     }
 
     pub fn uniform_3<T: Uniform3<T>>(&mut self, name: &str, v0: T, v1: T, v2: T) {
         if let Some(loc) = self.get_uniform_loc(name) {
-            <T as Uniform3<T>>::set(*loc, v0, v1, v2);
+            T::set(*loc, v0, v1, v2);
         }
     }
 
     pub fn uniform_4<T: Uniform4<T>>(&mut self, name: &str, v0: T, v1: T, v2: T, v3: T) {
         if let Some(loc) = self.get_uniform_loc(name) {
-            <T as Uniform4<T>>::set(*loc, v0, v1, v2, v3);
+            T::set(*loc, v0, v1, v2, v3);
         }
     }
 
