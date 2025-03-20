@@ -1,9 +1,6 @@
-use baphomet::{glm, hlgl, hlgl::GlBuffer};
-use gl::types::{GLsizei, GLsizeiptr};
+use baphomet::{glm, hlgl};
+use gl::types::GLsizei;
 use glfw::{Action, Context, Key};
-use rand::distr::Distribution;
-use rand::{Rng, random, rng};
-use std::error::Error;
 
 fn main() {
     colog::init();
@@ -46,35 +43,9 @@ fn main() {
 
     let mut vbo = hlgl::FVecBuffer::with_capacity(6 * 3);
 
-    let vao = unsafe {
-        let mut vao: u32 = 0;
-        gl::GenVertexArrays(1, &mut vao);
-        gl::BindVertexArray(vao);
-
-        vbo.bind();
-
-        gl::VertexAttribPointer(
-            shader.attrib_loc("aPos").unwrap(),
-            3,
-            gl::FLOAT,
-            gl::FALSE,
-            (6 * size_of::<f32>()) as GLsizei,
-            std::ptr::null(),
-        );
-        gl::EnableVertexAttribArray(shader.attrib_loc("aPos").unwrap());
-
-        gl::VertexAttribPointer(
-            shader.attrib_loc("aColor").unwrap(),
-            3,
-            gl::FLOAT,
-            gl::FALSE,
-            (6 * size_of::<f32>()) as GLsizei,
-            (3 * size_of::<f32>()) as *const _,
-        );
-        gl::EnableVertexAttribArray(shader.attrib_loc("aColor").unwrap());
-
-        vao
-    };
+    let vao = hlgl::VertexArrayBuilder::default()
+        .attrib_pointer(&mut shader, &vbo, "aPos:3f aColor:3f")
+        .build();
 
     unsafe {
         gl::Viewport(0, 0, 800, 600);
@@ -84,7 +55,7 @@ fn main() {
 
     while !window.should_close() {
         unsafe {
-            gl::ClearColor(0.2, 0.3, 0.3, 1.0);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
 
@@ -94,8 +65,9 @@ fn main() {
         unsafe {
             vbo.sync();
 
-            gl::BindVertexArray(vao);
+            vao.bind();
             gl::DrawArrays(gl::TRIANGLES, 0, (vbo.size() / 6) as GLsizei);
+            vao.unbind();
         }
 
         window.swap_buffers();

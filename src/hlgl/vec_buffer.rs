@@ -122,7 +122,7 @@ impl<T: Copy> VecBuffer<T> {
                     gl::STATIC_DRAW,
                 );
                 self.unbind();
-                log::trace!("Resized VecBuffer (id: {})", self.id);
+                log::trace!("VecBuffer (id: {}) resized GL buffer", self.id);
             }
             self.gl_bufsize = self.data.len();
             self.gl_bufpos = self.back;

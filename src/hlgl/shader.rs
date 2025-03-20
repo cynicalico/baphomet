@@ -64,7 +64,7 @@ impl Shader {
                     CString::from_str(name).unwrap().as_ptr().cast(),
                 );
                 if loc == -1 {
-                    log::warn!("Could not find attrib (shader id: {}): '{}'", self.id, name);
+                    log::error!("Could not find attrib (shader id: {}): '{}'", self.id, name);
                     None
                 } else {
                     Some(loc as GLuint)
@@ -328,7 +328,7 @@ impl ShaderBuilder {
 
         unsafe {
             for shader_id in self.shader_ids {
-                log::trace!("Deleting shader program with id: {}", shader_id);
+                log::trace!("Deleting shader with id: {}", shader_id);
                 gl::DeleteShader(shader_id);
             }
         }
@@ -360,8 +360,9 @@ impl ShaderBuilder {
                 info_log.set_len(log_len as usize);
 
                 log::error!(
-                    "Error(s) while compiling {} shader:\n{}",
+                    "Error(s) while compiling {} shader (id: {}):\n{}",
                     kind,
+                    id,
                     String::from_utf8_lossy(&info_log).trim_end()
                 );
             }
@@ -386,7 +387,8 @@ impl ShaderBuilder {
                 info_log.set_len(log_len as usize);
 
                 log::error!(
-                    "Error(s) while linking shader program:\n{}",
+                    "Error(s) while linking shader program (id: {}):\n{}",
+                    id,
                     String::from_utf8_lossy(&info_log).trim_end()
                 );
             }

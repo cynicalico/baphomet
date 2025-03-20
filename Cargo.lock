@@ -87,6 +87,7 @@ dependencies = [
  "nalgebra-glm",
  "pastey",
  "rand",
+ "regex",
 ]
 
 [[package]]

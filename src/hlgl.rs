@@ -1,9 +1,11 @@
 mod buffer;
 mod shader;
 mod vec_buffer;
+mod vertex_array;
 
 pub use buffer::*;
 pub use shader::*;
+pub use vertex_array::*;
 
 // Restrict pub usage of VecBuffer to a few specializations
 // It would likely blow up on much else than these
