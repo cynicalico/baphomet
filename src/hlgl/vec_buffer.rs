@@ -20,7 +20,30 @@ impl<T: Copy> Default for VecBuffer<T> {
     }
 }
 
+impl<T: Copy> Drop for VecBuffer<T> {
+    fn drop(&mut self) {
+        self.del_id();
+    }
+}
+
 impl<T: Copy> GlBuffer for VecBuffer<T> {
+    fn gen_id(&mut self) {
+        unsafe {
+            let mut id: u32 = 0;
+            gl::GenBuffers(1, &mut id);
+            log::trace!("Generated VecBuffer with id: {}", id);
+            self.id = id;
+        }
+    }
+
+    fn del_id(&mut self) {
+        unsafe {
+            gl::DeleteBuffers(1, &mut self.id);
+            log::trace!("Deleting VecBuffer with id: {}", self.id);
+            self.id = 0;
+        }
+    }
+
     fn bind(&self) {
         unsafe {
             gl::BindBuffer(gl::ARRAY_BUFFER, self.id);
@@ -36,25 +59,22 @@ impl<T: Copy> GlBuffer for VecBuffer<T> {
 
 impl<T: Copy> VecBuffer<T> {
     pub fn with_capacity(capacity: usize) -> Self {
-        let id = unsafe {
-            let mut id: u32 = 0;
-            gl::GenBuffers(1, &mut id);
-            id
-        };
-
         let mut data = Vec::with_capacity(capacity);
         unsafe {
             data.set_len(capacity);
         }
 
-        Self {
-            id,
+        let mut vb = Self {
+            id: 0,
             data,
             front: 0,
             back: 0,
             gl_bufsize: 0,
             gl_bufpos: 0,
-        }
+        };
+        vb.gen_id();
+
+        vb
     }
 
     pub fn clear(&mut self) {
@@ -104,6 +124,7 @@ impl<T: Copy> VecBuffer<T> {
                     gl::STATIC_DRAW,
                 );
                 self.unbind();
+                log::trace!("Resized VecBuffer (id: {})", self.id);
             }
             self.gl_bufsize = self.data.len();
             self.gl_bufpos = self.back;

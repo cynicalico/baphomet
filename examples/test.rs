@@ -44,7 +44,7 @@ fn main() {
         .try_link()
         .expect("Failed to build shader.");
 
-    let mut vbo = hlgl::FVecBuffer::with_capacity(6);
+    let mut vbo = hlgl::FVecBuffer::with_capacity(6 * 3);
 
     let vao = unsafe {
         let mut vao: u32 = 0;

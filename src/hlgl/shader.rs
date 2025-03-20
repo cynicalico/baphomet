@@ -38,6 +38,15 @@ pub struct Shader {
     uniform_locs: HashMap<String, Option<GLint>>,
 }
 
+impl Drop for Shader {
+    fn drop(&mut self) {
+        unsafe {
+            log::trace!("Deleting shader program with id: {}", self.id);
+            gl::DeleteProgram(self.id);
+        }
+    }
+}
+
 impl Shader {
     pub fn use_program(&self) {
         unsafe {
@@ -261,6 +270,7 @@ impl ShaderBuilder {
                 ShaderKind::Fragment => gl::FRAGMENT_SHADER,
             };
             let id = gl::CreateShader(gl_kind);
+            log::trace!("Created {} shader with id: {}", kind, id);
 
             gl::ShaderSource(
                 id,
@@ -283,6 +293,7 @@ impl ShaderBuilder {
     pub fn try_link(self) -> Result<Shader, Box<dyn Error>> {
         let id = unsafe {
             let id = gl::CreateProgram();
+            log::trace!("Created shader program with id: {}", id);
 
             for shader_id in &self.shader_ids {
                 gl::AttachShader(id, *shader_id);
@@ -294,6 +305,7 @@ impl ShaderBuilder {
 
         unsafe {
             for shader_id in self.shader_ids {
+                log::trace!("Deleting shader program with id: {}", shader_id);
                 gl::DeleteShader(shader_id);
             }
         }
