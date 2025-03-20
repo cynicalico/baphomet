@@ -54,24 +54,24 @@ fn main() {
         vbo.bind();
 
         gl::VertexAttribPointer(
-            0,
+            shader.attrib_loc("aPos").unwrap(),
             3,
             gl::FLOAT,
             gl::FALSE,
             (6 * size_of::<f32>()) as GLsizei,
             std::ptr::null(),
         );
-        gl::EnableVertexAttribArray(0);
+        gl::EnableVertexAttribArray(shader.attrib_loc("aPos").unwrap());
 
         gl::VertexAttribPointer(
-            1,
+            shader.attrib_loc("aColor").unwrap(),
             3,
             gl::FLOAT,
             gl::FALSE,
             (6 * size_of::<f32>()) as GLsizei,
             (3 * size_of::<f32>()) as *const _,
         );
-        gl::EnableVertexAttribArray(1);
+        gl::EnableVertexAttribArray(shader.attrib_loc("aColor").unwrap());
 
         vao
     };

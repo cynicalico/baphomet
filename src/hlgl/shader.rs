@@ -36,6 +36,7 @@ pub trait UniformMat {
 pub struct Shader {
     pub id: GLuint,
     uniform_locs: HashMap<String, Option<GLint>>,
+    attrib_locs: HashMap<String, Option<GLuint>>,
 }
 
 impl Drop for Shader {
@@ -54,43 +55,61 @@ impl Shader {
         }
     }
 
+    pub fn attrib_loc(&mut self, name: &str) -> Option<GLuint> {
+        self.attrib_locs
+            .entry(name.to_owned())
+            .or_insert_with(|| unsafe {
+                let loc = gl::GetAttribLocation(
+                    self.id,
+                    CString::from_str(name).unwrap().as_ptr().cast(),
+                );
+                if loc == -1 {
+                    log::warn!("Could not find attrib (shader id: {}): '{}'", self.id, name);
+                    None
+                } else {
+                    Some(loc as GLuint)
+                }
+            })
+            .clone()
+    }
+
     pub fn uniform_1<T: Uniform1<T>>(&mut self, name: &str, v0: T) {
-        if let Some(loc) = self.get_uniform_loc(name) {
+        if let Some(loc) = self.uniform_loc(name) {
             T::set(*loc, v0);
         }
     }
 
     pub fn uniform_2<T: Uniform2<T>>(&mut self, name: &str, v0: T, v1: T) {
-        if let Some(loc) = self.get_uniform_loc(name) {
+        if let Some(loc) = self.uniform_loc(name) {
             T::set(*loc, v0, v1);
         }
     }
 
     pub fn uniform_3<T: Uniform3<T>>(&mut self, name: &str, v0: T, v1: T, v2: T) {
-        if let Some(loc) = self.get_uniform_loc(name) {
+        if let Some(loc) = self.uniform_loc(name) {
             T::set(*loc, v0, v1, v2);
         }
     }
 
     pub fn uniform_4<T: Uniform4<T>>(&mut self, name: &str, v0: T, v1: T, v2: T, v3: T) {
-        if let Some(loc) = self.get_uniform_loc(name) {
+        if let Some(loc) = self.uniform_loc(name) {
             T::set(*loc, v0, v1, v2, v3);
         }
     }
 
     pub fn uniform_vec<T: UniformVec>(&mut self, name: &str, value: &T) {
-        if let Some(loc) = self.get_uniform_loc(name) {
+        if let Some(loc) = self.uniform_loc(name) {
             value.set(*loc);
         }
     }
 
     pub fn uniform_mat<T: UniformMat>(&mut self, name: &str, transpose: bool, value: &T) {
-        if let Some(loc) = self.get_uniform_loc(name) {
+        if let Some(loc) = self.uniform_loc(name) {
             value.set(*loc, transpose);
         }
     }
 
-    fn get_uniform_loc(&mut self, name: &str) -> &Option<GLint> {
+    fn uniform_loc(&mut self, name: &str) -> &Option<GLint> {
         self.uniform_locs
             .entry(name.to_owned())
             .or_insert_with(|| unsafe {
@@ -99,7 +118,11 @@ impl Shader {
                     CString::from_str(name).unwrap().as_ptr().cast(),
                 );
                 if loc == -1 {
-                    log::error!("Could not find uniform: '{}'", name);
+                    log::error!(
+                        "Could not find uniform (shader id: {}): '{}'",
+                        self.id,
+                        name
+                    );
                     None
                 } else {
                     Some(loc)
@@ -314,6 +337,7 @@ impl ShaderBuilder {
             Ok(Shader {
                 id,
                 uniform_locs: Default::default(),
+                attrib_locs: Default::default(),
             })
         } else {
             Err(Box::from("Failed to link shader module"))

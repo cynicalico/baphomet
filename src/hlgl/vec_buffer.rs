@@ -1,8 +1,6 @@
 use crate::hlgl::buffer::GlBuffer;
 use gl::types::{GLintptr, GLsizeiptr, GLuint};
 
-pub type FVecBuffer = VecBuffer<f32>;
-
 pub struct VecBuffer<T: Copy> {
     pub id: GLuint,
 
