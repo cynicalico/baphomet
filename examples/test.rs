@@ -1,14 +1,9 @@
-use baphomet::{glm, hlgl};
+use baphomet::{glm, hlgl, hlgl::GlBuffer};
 use gl::types::{GLsizei, GLsizeiptr};
 use glfw::{Action, Context, Key};
+use rand::distr::Distribution;
+use rand::{Rng, random, rng};
 use std::error::Error;
-
-fn build_shader() -> Result<hlgl::Shader, Box<dyn Error>> {
-    hlgl::ShaderBuilder::default()
-        .with_src_file(hlgl::ShaderKind::Vertex, "examples/res/basic.vert")?
-        .with_src_file(hlgl::ShaderKind::Fragment, "examples/res/basic.frag")?
-        .try_link()
-}
 
 fn main() {
     colog::init();
@@ -28,12 +23,7 @@ fn main() {
     log::debug!("Opened window");
     window.make_current();
 
-    window.set_key_polling(true);
-    window.set_mouse_button_polling(true);
-
-    window.set_framebuffer_size_callback(|_window, width, height| unsafe {
-        gl::Viewport(0, 0, width, height);
-    });
+    window.set_all_polling(true);
 
     gl::load_with(|s| window.get_proc_address(s).cast());
 
@@ -46,55 +36,42 @@ fn main() {
     };
     log::debug!("OpenGL v{}.{}", gl_version_major, gl_version_minor);
 
-    let mut shader = build_shader().expect("Failed to build shader.");
+    let mut shader = hlgl::ShaderBuilder::default()
+        .with_src_file(hlgl::ShaderKind::Vertex, "examples/res/basic.vert")
+        .expect("Failed to read vertex shader")
+        .with_src_file(hlgl::ShaderKind::Fragment, "examples/res/basic.frag")
+        .expect("Failed to read fragment shader")
+        .try_link()
+        .expect("Failed to build shader.");
 
-    #[rustfmt::skip]
-    let vertices: Vec<f32> = vec![
-        50.0,  50.0,  0.0,
-        100.0, 50.0,  0.0,
-        100.0, 100.0, 0.0,
-        50.0,  100.0, 0.0
-    ];
-    #[rustfmt::skip]
-    let indices: Vec<u32> = vec![
-        0, 1, 3,
-        1, 2, 3
-    ];
+    let mut vbo = hlgl::FVecBuffer::with_capacity(6);
 
     let vao = unsafe {
         let mut vao: u32 = 0;
         gl::GenVertexArrays(1, &mut vao);
         gl::BindVertexArray(vao);
 
-        let mut vbo: u32 = 0;
-        gl::GenBuffers(1, &mut vbo);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            (vertices.len() * size_of::<f32>()) as GLsizeiptr,
-            vertices.as_ptr().cast(),
-            gl::STATIC_DRAW,
-        );
-
-        let mut ebo: u32 = 0;
-        gl::GenBuffers(1, &mut ebo);
-        gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ebo);
-        gl::BufferData(
-            gl::ELEMENT_ARRAY_BUFFER,
-            (indices.len() * size_of::<f32>()) as GLsizeiptr,
-            indices.as_ptr().cast(),
-            gl::STATIC_DRAW,
-        );
+        vbo.bind();
 
         gl::VertexAttribPointer(
             0,
             3,
             gl::FLOAT,
             gl::FALSE,
-            (3 * size_of::<f32>()) as GLsizei,
+            (6 * size_of::<f32>()) as GLsizei,
             std::ptr::null(),
         );
         gl::EnableVertexAttribArray(0);
+
+        gl::VertexAttribPointer(
+            1,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            (6 * size_of::<f32>()) as GLsizei,
+            (3 * size_of::<f32>()) as *const _,
+        );
+        gl::EnableVertexAttribArray(1);
 
         vao
     };
@@ -103,6 +80,8 @@ fn main() {
         gl::Viewport(0, 0, 800, 600);
     }
 
+    let mut mvp = glm::ortho(0.0, 800.0, 600.0, 0.0, -1.0, 1.0);
+
     while !window.should_close() {
         unsafe {
             gl::ClearColor(0.2, 0.3, 0.3, 1.0);
@@ -110,25 +89,13 @@ fn main() {
         }
 
         shader.use_program();
-        shader.uniform_mat(
-            "mvp",
-            false,
-            &glm::ortho(
-                0.0,
-                window.get_size().0 as f32,
-                window.get_size().1 as f32,
-                0.0,
-                -1.0,
-                1.0,
-            ),
-        );
-
-        shader.uniform_1("x_off", ((glfw.get_time() * 5.0) as f32).sin() * 50.0);
-        shader.uniform_1("y_off", ((glfw.get_time() * 5.0) as f32).cos() * 50.0);
+        shader.uniform_mat("mvp", false, &mvp);
 
         unsafe {
+            vbo.sync();
+
             gl::BindVertexArray(vao);
-            gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, std::ptr::null());
+            gl::DrawArrays(gl::TRIANGLES, 0, (vbo.size() / 6) as GLsizei);
         }
 
         window.swap_buffers();
@@ -137,12 +104,26 @@ fn main() {
         for (_, event) in glfw::flush_messages(&events) {
             match event {
                 glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                    window.set_should_close(true)
+                    window.set_should_close(true);
                 }
-                glfw::WindowEvent::MouseButton(glfw::MouseButtonLeft, Action::Press, _) => {
-                    let (xpos, ypos) = window.get_cursor_pos();
-                    log::info!("Got left button ({xpos:.1}, {ypos:.1})");
+                glfw::WindowEvent::Key(Key::R, _, Action::Press, _) => {
+                    vbo.clear();
                 }
+                glfw::WindowEvent::MouseButton(glfw::MouseButton::Left, Action::Press, _) => {
+                    let (mx, my) = window.get_cursor_pos();
+                    let mx = mx as f32;
+                    let my = my as f32;
+                    #[rustfmt::skip]
+                    vbo.add([
+                        mx,        my,        0.0, 1.0, 0.0, 0.0,
+                        mx + 50.0, my,        0.0, 0.0, 1.0, 0.0,
+                        mx + 50.0, my + 50.0, 0.0, 0.0, 0.0, 1.0,
+                    ]);
+                }
+                glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
+                    gl::Viewport(0, 0, width, height);
+                    mvp = glm::ortho(0.0, width as f32, height as f32, 0.0, -1.0, 1.0);
+                },
                 _ => {}
             }
         }
