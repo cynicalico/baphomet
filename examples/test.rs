@@ -1,6 +1,7 @@
 use baphomet::{glm, hlgl};
 use gl::types::GLsizei;
 use glfw::{Action, Context, Key};
+use rand::{Rng, rng};
 
 fn main() {
     colog::init();
@@ -41,10 +42,10 @@ fn main() {
         .try_link()
         .expect("Failed to build shader.");
 
-    let mut vbo = hlgl::FVecBuffer::with_capacity(6 * 3);
+    let mut vbo = hlgl::FVecBuffer::with_capacity(9 * 3);
 
     let vao = hlgl::VertexArrayBuilder::default()
-        .attrib_pointer(&mut shader, &vbo, "aPos:3f aColor:3f")
+        .attrib_pointer(&mut shader, &vbo, "aPos:3f aColor:3f aRot:3f")
         .build();
 
     unsafe {
@@ -66,7 +67,7 @@ fn main() {
             vbo.sync();
 
             vao.bind();
-            gl::DrawArrays(gl::TRIANGLES, 0, (vbo.size() / 6) as GLsizei);
+            gl::DrawArrays(gl::TRIANGLES, 0, (vbo.size() / 9) as GLsizei);
             vao.unbind();
         }
 
@@ -83,13 +84,29 @@ fn main() {
                 }
                 glfw::WindowEvent::MouseButton(glfw::MouseButton::Left, Action::Press, _) => {
                     let (mx, my) = window.get_cursor_pos();
-                    let mx = mx as f32;
-                    let my = my as f32;
+
+                    let cx = mx as f32;
+                    let cy = my as f32;
+
+                    let r = 25.0;
+
+                    let x1 = cx + r * 270.0_f32.to_radians().cos();
+                    let y1 = cy + r * 270.0_f32.to_radians().sin();
+
+                    let x2 = cx + r * (270.0_f32 + 120.0).to_radians().cos();
+                    let y2 = cy + r * (270.0_f32 + 120.0).to_radians().sin();
+
+                    let x3 = cx + r * (270.0_f32 + 240.0).to_radians().cos();
+                    let y3 = cy + r * (270.0_f32 + 240.0).to_radians().sin();
+
+                    let dist = rand::distr::Uniform::new(0.0, 360.0).unwrap();
+                    let theta: f32 = rng().sample(dist);
+
                     #[rustfmt::skip]
                     vbo.add([
-                        mx,        my,        0.0, 1.0, 0.0, 0.0,
-                        mx + 50.0, my,        0.0, 0.0, 1.0, 0.0,
-                        mx + 50.0, my + 50.0, 0.0, 0.0, 0.0, 1.0,
+                        x1, y1, 0.0,  1.0, 0.0, 0.0,  cx, cy, theta.to_radians(),
+                        x2, y2, 0.0,  0.0, 1.0, 0.0,  cx, cy, theta.to_radians(),
+                        x3, y3, 0.0,  0.0, 0.0, 1.0,  cx, cy, theta.to_radians(),
                     ]);
                 }
                 glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
