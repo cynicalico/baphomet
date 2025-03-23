@@ -5,7 +5,7 @@ in vec3 aRot;
 
 out vec3 bColor;
 
-uniform mat4 mvp;
+uniform mat4 proj;
 
 void main() {
     float c = cos(aRot.z);
@@ -21,5 +21,5 @@ void main() {
     );
 
     bColor = aColor;
-    gl_Position = mvp * rot * vec4(aPos, 1.0);
+    gl_Position = proj * rot * vec4(aPos, 1.0);
 }

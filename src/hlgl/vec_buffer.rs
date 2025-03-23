@@ -56,6 +56,7 @@ impl<T: Copy> GlBuffer for VecBuffer<T> {
 }
 
 impl<T: Copy> VecBuffer<T> {
+    #[allow(clippy::uninit_vec)]
     pub fn with_capacity(capacity: usize) -> Self {
         let mut data = Vec::with_capacity(capacity);
         unsafe {
@@ -93,9 +94,10 @@ impl<T: Copy> VecBuffer<T> {
         self.back - self.front
     }
 
+    #[allow(clippy::uninit_vec)]
     pub fn add<const N: usize>(&mut self, data: [T; N]) {
         while self.back + data.len() > self.data.len() {
-            if self.data.len() == 0 {
+            if self.data.is_empty() {
                 self.data.reserve(1);
                 unsafe {
                     self.data.set_len(1);

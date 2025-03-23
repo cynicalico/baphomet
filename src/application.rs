@@ -1,23 +1,21 @@
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum MouseButton {
-    Left,
-    Middle,
-    Right,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum MouseAction {
-    Press,
-    Release,
-}
+use crate::{
+    Engine,
+    input::{KeyAction, MouseAction, MouseButton},
+};
 
 pub trait Application {
-    fn update(&mut self, dt: f32);
-    fn draw(&mut self);
+    fn update(&mut self, engine: &mut Engine, dt: f32);
+    fn draw(&mut self, engine: &mut Engine);
 
-    fn key_event(&mut self) {}
-    fn mouse_button_event(&mut self, x: f32, y: f32, button: MouseButton, action: MouseAction) {}
-
-    fn window_resized(&mut self, width: u32, height: u32) {}
-    fn window_pixel_resized(&mut self, width: u32, height: u32) {}
+    fn key_event(
+        &mut self,
+        _engine: &mut Engine,
+        _keycode: Option<sdl3::keyboard::Keycode>,
+        _scancode: Option<sdl3::keyboard::Scancode>,
+        _mods: sdl3::keyboard::Mod,
+        _action: KeyAction,
+    ) {
+    }
+    fn mouse_button_event(&mut self, _x: f32, _y: f32, _button: MouseButton, _action: MouseAction) {
+    }
 }

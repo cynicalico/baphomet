@@ -1,20 +1,31 @@
-use baphomet::{MouseAction, MouseButton, glm, hlgl};
+use baphomet::input::{KeyAction, MouseAction, MouseButton};
+use baphomet::{EMA, hlgl};
 use gl::types::GLsizei;
-use rand::{Rng, rng};
+use rand::prelude::*;
+use sdl3::keyboard::{Keycode, Mod, Scancode};
+use std::error::Error;
+use std::time::Duration;
 
 struct TestApp {
     shader: hlgl::Shader,
     vbo: hlgl::FVecBuffer,
     vao: hlgl::VertexArray,
-    proj: glm::Mat4,
+    title_update: baphomet::Ticker,
 }
 
 impl baphomet::Application for TestApp {
-    fn update(&mut self, dt: f32) {}
+    fn update(&mut self, engine: &mut baphomet::Engine, _dt: f32) {
+        if self.title_update.tick() > 0 {
+            engine
+                .window
+                .set_title(&format!("TestApp | {:.2} fps", engine.frame_counter.fps()));
+        }
+    }
 
-    fn draw(&mut self) {
+    fn draw(&mut self, engine: &mut baphomet::Engine) {
         self.shader.use_program();
-        self.shader.uniform_mat("mvp", false, &self.proj);
+        self.shader
+            .uniform_mat("proj", false, &engine.window_ortho_projection());
 
         unsafe {
             self.vbo.sync();
@@ -25,52 +36,52 @@ impl baphomet::Application for TestApp {
         }
     }
 
+    fn key_event(
+        &mut self,
+        engine: &mut baphomet::Engine,
+        keycode: Option<Keycode>,
+        _scancode: Option<Scancode>,
+        _mods: Mod,
+        action: KeyAction,
+    ) {
+        match keycode {
+            Some(Keycode::Escape) => engine.shutdown(),
+            Some(Keycode::_1) => {
+                if action == KeyAction::Press {
+                    let is_vsync = engine.vsync();
+                    engine.set_vsync(!is_vsync);
+                }
+            }
+            _ => (),
+        }
+    }
+
     fn mouse_button_event(&mut self, x: f32, y: f32, button: MouseButton, action: MouseAction) {
         if button == MouseButton::Left && action == MouseAction::Press {
             let r = 25.0;
 
-            let x1 = x + r * 270.0_f32.to_radians().cos();
-            let y1 = y + r * 270.0_f32.to_radians().sin();
-
-            let x2 = x + r * (270.0_f32 + 120.0).to_radians().cos();
-            let y2 = y + r * (270.0_f32 + 120.0).to_radians().sin();
-
-            let x3 = x + r * (270.0_f32 + 240.0).to_radians().cos();
-            let y3 = y + r * (270.0_f32 + 240.0).to_radians().sin();
-
             let dist = rand::distr::Uniform::new(0.0, 360.0).unwrap();
-            let theta: f32 = rng().sample(dist);
+            let theta: f32 = rand::rng().sample(dist);
 
             #[rustfmt::skip]
             self.vbo.add([
-                x1, y1, 0.0,  1.0, 0.0, 0.0,  x, y, theta.to_radians(),
-                x2, y2, 0.0,  0.0, 1.0, 0.0,  x, y, theta.to_radians(),
-                x3, y3, 0.0,  0.0, 0.0, 1.0,  x, y, theta.to_radians(),
+                x,                     y + -r,       0.0,  1.0, 0.0, 0.0,  x, y, theta.to_radians(),
+                x + r * 0.866_025_4 ,  y + r * 0.5 , 0.0,  0.0, 1.0, 0.0,  x, y, theta.to_radians(),
+                x + r * -0.866_025_4 , y + r * 0.5 , 0.0,  0.0, 0.0, 1.0,  x, y, theta.to_radians(),
             ]);
-        }
-    }
-
-    fn window_resized(&mut self, width: u32, height: u32) {
-        self.proj = glm::ortho(0.0, width as f32, height as f32, 0.0, -1.0, 1.0);
-    }
-
-    fn window_pixel_resized(&mut self, width: u32, height: u32) {
-        unsafe {
-            gl::Viewport(0, 0, width as GLsizei, height as GLsizei);
         }
     }
 }
 
-fn main() {
-    let mut engine = baphomet::init();
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut engine = baphomet::init("TestApp", 800, 600, |builder| {
+        builder.resizable().position_centered()
+    })?;
 
     let mut shader = hlgl::ShaderBuilder::default()
-        .with_src_file(hlgl::ShaderKind::Vertex, "examples/res/basic.vert")
-        .expect("Failed to read vertex shader")
-        .with_src_file(hlgl::ShaderKind::Fragment, "examples/res/basic.frag")
-        .expect("Failed to read fragment shader")
-        .try_link()
-        .expect("Failed to build shader.");
+        .with_src_file(hlgl::ShaderKind::Vertex, "examples/res/basic.vert")?
+        .with_src_file(hlgl::ShaderKind::Fragment, "examples/res/basic.frag")?
+        .try_link()?;
 
     let vbo = hlgl::FVecBuffer::default();
 
@@ -78,12 +89,15 @@ fn main() {
         .attrib_pointer(&mut shader, &vbo, "aPos:3f aColor:3f aRot:3f")
         .build();
 
-    let mut app = TestApp {
-        shader,
-        vbo,
-        vao,
-        proj: glm::identity(),
-    };
+    baphomet::run_app(
+        &mut engine,
+        &mut TestApp {
+            shader,
+            vbo,
+            vao,
+            title_update: baphomet::Ticker::new(Duration::from_millis(100)),
+        },
+    );
 
-    baphomet::run_app(&mut engine, &mut app);
+    Ok(())
 }
