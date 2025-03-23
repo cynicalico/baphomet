@@ -1,38 +1,44 @@
 use baphomet::{glm, hlgl};
 use gl::types::GLsizei;
-use glfw::{Action, Context, Key};
 use rand::{Rng, rng};
+use sdl3::event::{Event, WindowEvent};
+use sdl3::keyboard::Keycode;
 
 fn main() {
     colog::init();
 
-    use glfw::fail_on_errors;
-    let mut glfw = glfw::init(fail_on_errors!()).unwrap();
-    log::debug!("Initialized GLFW");
+    let sdl_context = sdl3::init().unwrap();
+    log::debug!("Initialized SDL3 v{}", sdl3::version::version());
 
-    glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
-    glfw.window_hint(glfw::WindowHint::OpenGlProfile(
-        glfw::OpenGlProfileHint::Core,
-    ));
+    let video_subsystem = sdl_context.video().unwrap();
 
-    let (mut window, events) = glfw
-        .create_window(800, 600, "LearnOpenGL", glfw::WindowMode::Windowed)
-        .expect("Failed to create GLFW window.");
-    log::debug!("Opened window");
-    window.make_current();
+    let gl_attr = video_subsystem.gl_attr();
+    gl_attr.set_context_profile(sdl3::video::GLProfile::Core);
+    gl_attr.set_context_version(3, 3);
 
-    window.set_all_polling(true);
+    let window = video_subsystem
+        .window("test", 800, 600)
+        .high_pixel_density()
+        .resizable()
+        .opengl()
+        .build()
+        .unwrap();
+    log::debug!(
+        "Opened window (size: {:?}, pixel size: {:?})",
+        window.size(),
+        window.size_in_pixels()
+    );
 
-    gl::load_with(|s| window.get_proc_address(s).cast());
+    let ctx = window.gl_create_context().unwrap();
+    window.gl_make_current(&ctx).unwrap();
 
-    let (gl_version_major, gl_version_minor) = unsafe {
-        let mut major: i32 = 0;
-        let mut minor: i32 = 0;
-        gl::GetIntegerv(gl::MAJOR_VERSION, &mut major);
-        gl::GetIntegerv(gl::MINOR_VERSION, &mut minor);
-        (major, minor)
-    };
-    log::debug!("OpenGL v{}.{}", gl_version_major, gl_version_minor);
+    gl::load_with(|name| video_subsystem.gl_get_proc_address(name).unwrap() as *const _);
+
+    log::debug!(
+        "OpenGL v{}.{}",
+        gl_attr.context_version().0,
+        gl_attr.context_version().1
+    );
 
     let mut shader = hlgl::ShaderBuilder::default()
         .with_src_file(hlgl::ShaderKind::Vertex, "examples/res/basic.vert")
@@ -49,12 +55,26 @@ fn main() {
         .build();
 
     unsafe {
-        gl::Viewport(0, 0, 800, 600);
+        gl::Viewport(
+            0,
+            0,
+            window.size_in_pixels().0 as GLsizei,
+            window.size_in_pixels().1 as GLsizei,
+        );
     }
 
-    let mut mvp = glm::ortho(0.0, 800.0, 600.0, 0.0, -1.0, 1.0);
+    let mut mvp = glm::ortho(
+        0.0,
+        window.size().0 as f32,
+        window.size().1 as f32,
+        0.0,
+        -1.0,
+        1.0,
+    );
 
-    while !window.should_close() {
+    let mut event_pump = sdl_context.event_pump().unwrap();
+
+    'running: loop {
         unsafe {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
@@ -71,48 +91,49 @@ fn main() {
             vao.unbind();
         }
 
-        window.swap_buffers();
+        window.gl_swap_window();
 
-        glfw.poll_events();
-        for (_, event) in glfw::flush_messages(&events) {
+        for event in event_pump.poll_iter() {
             match event {
-                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                    window.set_should_close(true);
-                }
-                glfw::WindowEvent::Key(Key::R, _, Action::Press, _) => {
-                    vbo.clear();
-                }
-                glfw::WindowEvent::MouseButton(glfw::MouseButton::Left, Action::Press, _) => {
-                    let (mx, my) = window.get_cursor_pos();
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
 
-                    let cx = mx as f32;
-                    let cy = my as f32;
-
+                Event::MouseButtonDown { x, y, .. } => {
                     let r = 25.0;
 
-                    let x1 = cx + r * 270.0_f32.to_radians().cos();
-                    let y1 = cy + r * 270.0_f32.to_radians().sin();
+                    let x1 = x + r * 270.0_f32.to_radians().cos();
+                    let y1 = y + r * 270.0_f32.to_radians().sin();
 
-                    let x2 = cx + r * (270.0_f32 + 120.0).to_radians().cos();
-                    let y2 = cy + r * (270.0_f32 + 120.0).to_radians().sin();
+                    let x2 = x + r * (270.0_f32 + 120.0).to_radians().cos();
+                    let y2 = y + r * (270.0_f32 + 120.0).to_radians().sin();
 
-                    let x3 = cx + r * (270.0_f32 + 240.0).to_radians().cos();
-                    let y3 = cy + r * (270.0_f32 + 240.0).to_radians().sin();
+                    let x3 = x + r * (270.0_f32 + 240.0).to_radians().cos();
+                    let y3 = y + r * (270.0_f32 + 240.0).to_radians().sin();
 
                     let dist = rand::distr::Uniform::new(0.0, 360.0).unwrap();
                     let theta: f32 = rng().sample(dist);
 
                     #[rustfmt::skip]
                     vbo.add([
-                        x1, y1, 0.0,  1.0, 0.0, 0.0,  cx, cy, theta.to_radians(),
-                        x2, y2, 0.0,  0.0, 1.0, 0.0,  cx, cy, theta.to_radians(),
-                        x3, y3, 0.0,  0.0, 0.0, 1.0,  cx, cy, theta.to_radians(),
+                        x1, y1, 0.0,  1.0, 0.0, 0.0,  x, y, theta.to_radians(),
+                        x2, y2, 0.0,  0.0, 1.0, 0.0,  x, y, theta.to_radians(),
+                        x3, y3, 0.0,  0.0, 0.0, 1.0,  x, y, theta.to_radians(),
                     ]);
                 }
-                glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
-                    gl::Viewport(0, 0, width, height);
-                    mvp = glm::ortho(0.0, width as f32, height as f32, 0.0, -1.0, 1.0);
+
+                Event::Window { win_event, .. } => match win_event {
+                    WindowEvent::PixelSizeChanged(width, height) => unsafe {
+                        gl::Viewport(0, 0, width as GLsizei, height as GLsizei);
+                    },
+                    WindowEvent::Resized(width, height) => {
+                        mvp = glm::ortho(0.0, width as f32, height as f32, 0.0, -1.0, 1.0);
+                    }
+                    _ => {}
                 },
+
                 _ => {}
             }
         }
