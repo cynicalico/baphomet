@@ -1,9 +1,12 @@
-use crate::gfx::color::GlColor;
-use crate::hlgl::{
-    BindTarget, FVecBuffer, Shader, ShaderBuilder, ShaderKind, UIVecBuffer, VertexArray,
-    VertexArrayBuilder,
+use crate::{
+    gfx::color::GlColor,
+    gl,
+    gl::types::{GLenum, GLsizei},
+    hlgl::{
+        BindTarget, FVecBuffer, Shader, ShaderBuilder, ShaderKind, UIVecBuffer, VertexArray,
+        VertexArrayBuilder,
+    },
 };
-use gl::types::{GLenum, GLsizei};
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]

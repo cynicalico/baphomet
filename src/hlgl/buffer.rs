@@ -1,4 +1,4 @@
-use gl::types::GLenum;
+use crate::{gl, gl::types::GLenum};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BindTarget {

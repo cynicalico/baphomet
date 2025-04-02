@@ -1,4 +1,7 @@
-use gl::types::{GLint, GLsizei, GLuint};
+use crate::{
+    gl,
+    gl::types::{GLint, GLsizei, GLuint},
+};
 use pastey::paste;
 use std::collections::HashMap;
 use std::error::Error;

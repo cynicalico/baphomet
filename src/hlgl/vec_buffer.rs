@@ -1,6 +1,8 @@
-use crate::hlgl::BindTarget;
-use crate::hlgl::buffer::GlBuffer;
-use gl::types::{GLintptr, GLsizeiptr, GLuint};
+use crate::{
+    gl,
+    gl::types::{GLintptr, GLsizeiptr, GLuint},
+    hlgl::{BindTarget, buffer::GlBuffer},
+};
 
 pub struct VecBuffer<T: Copy> {
     pub id: GLuint,
@@ -28,17 +30,15 @@ impl<T: Copy> Drop for VecBuffer<T> {
 impl<T: Copy> GlBuffer for VecBuffer<T> {
     fn gen_id(&mut self) {
         unsafe {
-            let mut id: u32 = 0;
-            gl::GenBuffers(1, &mut id);
-            log::trace!("Generated VecBuffer with id: {}", id);
-            self.id = id;
+            gl::GenBuffers(1, &mut self.id);
+            log::trace!("Generated buffer (VecBuffer) with id: {}", self.id);
         }
     }
 
     fn del_id(&mut self) {
         unsafe {
-            gl::DeleteBuffers(1, &mut self.id);
-            log::trace!("Deleting VecBuffer with id: {}", self.id);
+            log::trace!("Deleting buffer (VecBuffer) with id: {}", self.id);
+            gl::DeleteBuffers(1, &self.id);
             self.id = 0;
         }
     }

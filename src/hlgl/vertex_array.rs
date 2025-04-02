@@ -1,5 +1,8 @@
-use crate::hlgl::{BindTarget, GlBuffer, Shader};
-use gl::types::{GLenum, GLint, GLsizei, GLuint};
+use crate::{
+    gl,
+    gl::types::{GLenum, GLint, GLsizei, GLuint},
+    hlgl::{BindTarget, GlBuffer, Shader},
+};
 use regex::Regex;
 use std::ptr;
 
@@ -10,7 +13,7 @@ pub struct VertexArray {
 impl Drop for VertexArray {
     fn drop(&mut self) {
         unsafe {
-            log::trace!("Deleting VertexArray with id: {}", self.id);
+            log::trace!("Deleting vertex array with id: {}", self.id);
             gl::DeleteVertexArrays(1, &self.id);
         }
     }
@@ -57,7 +60,7 @@ impl VertexArrayBuilder {
         let id = unsafe {
             let mut id: u32 = 0;
             gl::GenVertexArrays(1, &mut id);
-            log::trace!("Generated VertexArray with id: {}", id);
+            log::trace!("Generated vertex array with id: {}", id);
             id
         };
 
@@ -99,7 +102,7 @@ impl VertexArrayBuilder {
             let mut offset = 0;
             for (loc, count, type_, size) in attribs {
                 log::trace!(
-                    "VertexArray (id: {}) attrib_pointer {} {} {} {} {} {}",
+                    "VertexArray (id: {}) VertexAttribPointer {} {} {} {} {} {}",
                     self.id,
                     loc,
                     count,

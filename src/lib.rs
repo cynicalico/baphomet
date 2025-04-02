@@ -7,6 +7,11 @@ pub mod hlgl;
 pub mod input;
 mod time;
 
+mod gl {
+    #![allow(unsafe_op_in_unsafe_fn)]
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+
 use crate::gfx::Batcher;
 pub use application::*;
 pub use averagers::*;
@@ -99,7 +104,7 @@ where
     });
 
     log::debug!(
-        "OpenGL v{}.{}",
+        "Loaded OpenGL v{}.{}",
         gl_attr.context_version().0,
         gl_attr.context_version().1
     );
