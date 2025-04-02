@@ -2,18 +2,22 @@ pub extern crate nalgebra_glm as glm;
 
 pub mod application;
 mod averagers;
+pub mod gfx;
 pub mod hlgl;
 pub mod input;
 mod time;
 
+use crate::gfx::Batcher;
 pub use application::*;
 pub use averagers::*;
+pub use gfx::{Hsla, Hsva, Rgba};
 use gl::types::GLsizei;
 use sdl3::EventPump;
 pub use time::*;
 
 pub struct Engine {
     pub window: sdl3::video::Window,
+    pub batcher: Batcher,
     pub frame_counter: FrameCounter,
 
     sdl: sdl3::Sdl,
@@ -102,6 +106,7 @@ where
 
     Ok(Engine {
         window,
+        batcher: Batcher::default(),
         frame_counter: FrameCounter::default(),
         sdl: sdl_context,
         ctx,
@@ -112,16 +117,21 @@ where
 pub fn run_app<T: Application>(engine: &mut Engine, app: &mut T) {
     engine.running = true;
 
+    // Make sure we get a good value when we ask about vsync later
+    engine.set_vsync(true);
+
     let mut event_pump = engine.sdl.event_pump().unwrap();
     while engine.running {
         app.update(engine, engine.frame_counter.dt().as_secs_f32());
 
         unsafe {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
 
         app.draw(engine);
+
+        engine.batcher.draw(&engine.window_ortho_projection());
 
         engine.window.gl_swap_window();
 
@@ -173,20 +183,18 @@ fn poll_event_pump<T: Application>(engine: &mut Engine, app: &mut T, event_pump:
             Event::MouseButtonDown {
                 x, y, mouse_btn, ..
             } => app.mouse_button_event(
+                engine,
                 x,
                 y,
                 input::MouseButton::from(mouse_btn),
                 input::MouseAction::Press,
             ),
 
-            Event::Window { win_event, .. } => match win_event {
-                // WindowEvent::Resized(width, height) => {
-                //     app.window_resized(width as u32, height as u32);
-                // }
-                WindowEvent::PixelSizeChanged(width, height) => unsafe {
-                    gl::Viewport(0, 0, width as GLsizei, height as GLsizei);
-                },
-                _ => {}
+            Event::Window {
+                win_event: WindowEvent::PixelSizeChanged(width, height),
+                ..
+            } => unsafe {
+                gl::Viewport(0, 0, width as GLsizei, height as GLsizei);
             },
 
             _ => {}

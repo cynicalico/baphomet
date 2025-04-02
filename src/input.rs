@@ -1,3 +1,5 @@
+pub use sdl3::keyboard::{Keycode, Mod, Scancode};
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MouseButton {
     Unknown,
@@ -16,7 +18,7 @@ pub enum MouseAction {
 pub enum KeyAction {
     Press,
     Release,
-    Repeat
+    Repeat,
 }
 
 impl From<sdl3::mouse::MouseButton> for MouseButton {

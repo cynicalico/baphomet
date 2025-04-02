@@ -1,6 +1,7 @@
-use crate::hlgl::{GlBuffer, Shader};
+use crate::hlgl::{BindTarget, GlBuffer, Shader};
 use gl::types::{GLenum, GLint, GLsizei, GLuint};
 use regex::Regex;
+use std::ptr;
 
 pub struct VertexArray {
     pub id: GLuint,
@@ -10,7 +11,7 @@ impl Drop for VertexArray {
     fn drop(&mut self) {
         unsafe {
             log::trace!("Deleting VertexArray with id: {}", self.id);
-            gl::DeleteVertexArrays(1, &mut self.id);
+            gl::DeleteVertexArrays(1, &self.id);
         }
     }
 }
@@ -25,6 +26,18 @@ impl VertexArray {
     pub fn unbind(&self) {
         unsafe {
             gl::BindVertexArray(0);
+        }
+    }
+
+    pub fn draw_arrays(&self, mode: GLenum, first: GLint, count: GLsizei) {
+        unsafe {
+            gl::DrawArrays(mode, first, count);
+        }
+    }
+
+    pub fn draw_elements(&self, mode: GLenum, count: GLsizei) {
+        unsafe {
+            gl::DrawElements(mode, count, gl::UNSIGNED_INT, ptr::null());
         }
     }
 }
@@ -55,6 +68,7 @@ impl VertexArrayBuilder {
         self,
         shader: &mut Shader,
         buffer: &T,
+        target: BindTarget,
         format: &str,
     ) -> Self {
         let re = Regex::new(r"(\w+):(\d+)([fiu])").unwrap();
@@ -81,7 +95,7 @@ impl VertexArrayBuilder {
 
         unsafe {
             gl::BindVertexArray(self.id);
-            buffer.bind();
+            buffer.bind(target);
             let mut offset = 0;
             for (loc, count, type_, size) in attribs {
                 log::trace!(
@@ -107,8 +121,19 @@ impl VertexArrayBuilder {
 
                 offset += count * size;
             }
-            buffer.unbind();
+            buffer.unbind(target);
             gl::BindVertexArray(0);
+        }
+
+        self
+    }
+
+    pub fn with_index_buffer<T: GlBuffer>(self, buffer: &T) -> Self {
+        unsafe {
+            gl::BindVertexArray(self.id);
+            buffer.bind(BindTarget::ElementArrayBuffer);
+            gl::BindVertexArray(0);
+            buffer.unbind(BindTarget::ElementArrayBuffer);
         }
 
         self

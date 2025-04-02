@@ -1,3 +1,4 @@
+use crate::hlgl::BindTarget;
 use crate::hlgl::buffer::GlBuffer;
 use gl::types::{GLintptr, GLsizeiptr, GLuint};
 
@@ -42,15 +43,15 @@ impl<T: Copy> GlBuffer for VecBuffer<T> {
         }
     }
 
-    fn bind(&self) {
+    fn bind(&self, target: BindTarget) {
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.id);
+            gl::BindBuffer(target.as_gl_enum(), self.id);
         }
     }
 
-    fn unbind(&self) {
+    fn unbind(&self, target: BindTarget) {
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+            gl::BindBuffer(target.as_gl_enum(), 0);
         }
     }
 }
@@ -116,28 +117,28 @@ impl<T: Copy> VecBuffer<T> {
     pub unsafe fn sync(&mut self) {
         if self.data.len() > self.gl_bufsize {
             unsafe {
-                self.bind();
+                self.bind(BindTarget::ArrayBuffer);
                 gl::BufferData(
                     gl::ARRAY_BUFFER,
                     (self.data.len() * size_of::<T>()) as GLsizeiptr,
                     self.data[..self.data.len()].as_ptr().cast(),
                     gl::STATIC_DRAW,
                 );
-                self.unbind();
+                self.unbind(BindTarget::ArrayBuffer);
                 log::trace!("VecBuffer (id: {}) resized GL buffer", self.id);
             }
             self.gl_bufsize = self.data.len();
             self.gl_bufpos = self.back;
         } else if self.back > self.gl_bufpos {
             unsafe {
-                self.bind();
+                self.bind(BindTarget::ArrayBuffer);
                 gl::BufferSubData(
                     gl::ARRAY_BUFFER,
                     (self.gl_bufpos * size_of::<T>()) as GLintptr,
                     ((self.back - self.gl_bufpos) * size_of::<T>()) as GLsizeiptr,
                     self.data[self.gl_bufpos..self.back].as_ptr().cast(),
                 );
-                self.unbind();
+                self.unbind(BindTarget::ArrayBuffer);
             }
             self.gl_bufpos = self.back;
         }

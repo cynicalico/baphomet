@@ -1,44 +1,44 @@
-use baphomet::input::{KeyAction, MouseAction, MouseButton};
-use baphomet::{EMA, hlgl};
-use gl::types::GLsizei;
+use baphomet::input::*;
+use baphomet::{Application, Engine, Rgba, Ticker};
 use rand::prelude::*;
-use sdl3::keyboard::{Keycode, Mod, Scancode};
 use std::error::Error;
 use std::time::Duration;
 
-struct TestApp {
-    shader: hlgl::Shader,
-    vbo: hlgl::FVecBuffer,
-    vao: hlgl::VertexArray,
-    title_update: baphomet::Ticker,
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut engine = baphomet::init("TestApp", 800, 600, |builder| {
+        builder.resizable().position_centered()
+    })?;
+
+    let mut app = TestApp {
+        title_update: Ticker::new(Duration::from_millis(100)),
+    };
+
+    baphomet::run_app(&mut engine, &mut app);
+
+    Ok(())
 }
 
-impl baphomet::Application for TestApp {
-    fn update(&mut self, engine: &mut baphomet::Engine, _dt: f32) {
+struct TestApp {
+    title_update: Ticker,
+}
+
+impl Application for TestApp {
+    fn update(&mut self, engine: &mut Engine, _dt: f32) {
         if self.title_update.tick() > 0 {
-            engine
-                .window
-                .set_title(&format!("TestApp | {:.2} fps", engine.frame_counter.fps()));
+            let vsync_label = if engine.vsync() { " (vsync)" } else { "" };
+            let _ = engine.window.set_title(&format!(
+                "TestApp | {:.2} fps{}",
+                engine.frame_counter.fps(),
+                vsync_label
+            ));
         }
     }
 
-    fn draw(&mut self, engine: &mut baphomet::Engine) {
-        self.shader.use_program();
-        self.shader
-            .uniform_mat("proj", false, &engine.window_ortho_projection());
-
-        unsafe {
-            self.vbo.sync();
-
-            self.vao.bind();
-            gl::DrawArrays(gl::TRIANGLES, 0, (self.vbo.size() / 9) as GLsizei);
-            self.vao.unbind();
-        }
-    }
+    fn draw(&mut self, _engine: &mut Engine) {}
 
     fn key_event(
         &mut self,
-        engine: &mut baphomet::Engine,
+        engine: &mut Engine,
         keycode: Option<Keycode>,
         _scancode: Option<Scancode>,
         _mods: Mod,
@@ -56,48 +56,30 @@ impl baphomet::Application for TestApp {
         }
     }
 
-    fn mouse_button_event(&mut self, x: f32, y: f32, button: MouseButton, action: MouseAction) {
+    fn mouse_button_event(
+        &mut self,
+        _engine: &mut Engine,
+        x: f32,
+        y: f32,
+        button: MouseButton,
+        action: MouseAction,
+    ) {
         if button == MouseButton::Left && action == MouseAction::Press {
             let r = 25.0;
-
             let dist = rand::distr::Uniform::new(0.0, 360.0).unwrap();
+
+            let x0 = x;
+            let y0 = y + -r;
+            let x1 = x + r * 0.866_025_4;
+            let y1 = y + r * 0.5;
+            let x2 = x + r * -0.866_025_4;
+            let y2 = y + r * 0.5;
+            let color = Rgba::hex(0xff0000ff);
             let theta: f32 = rand::rng().sample(dist);
 
-            #[rustfmt::skip]
-            self.vbo.add([
-                x,                     y + -r,       0.0,  1.0, 0.0, 0.0,  x, y, theta.to_radians(),
-                x + r * 0.866_025_4 ,  y + r * 0.5 , 0.0,  0.0, 1.0, 0.0,  x, y, theta.to_radians(),
-                x + r * -0.866_025_4 , y + r * 0.5 , 0.0,  0.0, 0.0, 1.0,  x, y, theta.to_radians(),
-            ]);
+            _engine
+                .batcher
+                .fill_tri(x0, y0, x1, y1, x2, y2, &color, x, y, theta);
         }
     }
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut engine = baphomet::init("TestApp", 800, 600, |builder| {
-        builder.resizable().position_centered()
-    })?;
-
-    let mut shader = hlgl::ShaderBuilder::default()
-        .with_src_file(hlgl::ShaderKind::Vertex, "examples/res/basic.vert")?
-        .with_src_file(hlgl::ShaderKind::Fragment, "examples/res/basic.frag")?
-        .try_link()?;
-
-    let vbo = hlgl::FVecBuffer::default();
-
-    let vao = hlgl::VertexArrayBuilder::default()
-        .attrib_pointer(&mut shader, &vbo, "aPos:3f aColor:3f aRot:3f")
-        .build();
-
-    baphomet::run_app(
-        &mut engine,
-        &mut TestApp {
-            shader,
-            vbo,
-            vao,
-            title_update: baphomet::Ticker::new(Duration::from_millis(100)),
-        },
-    );
-
-    Ok(())
 }

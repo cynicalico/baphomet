@@ -16,6 +16,13 @@ pub trait Application {
         _action: KeyAction,
     ) {
     }
-    fn mouse_button_event(&mut self, _x: f32, _y: f32, _button: MouseButton, _action: MouseAction) {
+    fn mouse_button_event(
+        &mut self,
+        _engine: &mut Engine,
+        _x: f32,
+        _y: f32,
+        _button: MouseButton,
+        _action: MouseAction,
+    ) {
     }
 }

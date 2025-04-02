@@ -53,6 +53,7 @@ impl Ticker {
 }
 
 pub struct FrameCounter {
+    #[allow(dead_code)]
     start: Instant,
     timestamps: VecDeque<Instant>,
     ticker: Ticker,
