@@ -15,6 +15,7 @@ impl Drop for VertexArray {
         unsafe {
             log::trace!("Deleting vertex array with id: {}", self.id);
             gl::DeleteVertexArrays(1, &self.id);
+            self.id = 0;
         }
     }
 }

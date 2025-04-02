@@ -13,6 +13,7 @@ mod gl {
 }
 
 use crate::gfx::Batcher;
+use crate::gl::types::{GLchar, GLenum, GLuint, GLvoid};
 pub use application::*;
 pub use averagers::*;
 pub use gfx::{Hsla, Hsva, Rgba};
@@ -21,14 +22,15 @@ use sdl3::EventPump;
 pub use time::*;
 
 pub struct Engine {
-    pub window: sdl3::video::Window,
     pub batcher: Batcher,
     pub frame_counter: FrameCounter,
 
-    sdl: sdl3::Sdl,
+    running: bool,
+
     #[allow(dead_code)]
     ctx: sdl3::video::GLContext,
-    running: bool,
+    pub window: sdl3::video::Window,
+    sdl: sdl3::Sdl,
 }
 
 impl Engine {
@@ -83,6 +85,9 @@ where
     let gl_attr = video_subsystem.gl_attr();
     gl_attr.set_context_profile(sdl3::video::GLProfile::Core);
     gl_attr.set_context_version(3, 3);
+    gl_attr.set_context_flags().debug().set();
+    gl_attr.set_multisample_buffers(1);
+    gl_attr.set_multisample_samples(4);
 
     let mut builder = video_subsystem.window(title, width, height);
     let window = window_build_fn(&mut builder)
@@ -102,6 +107,12 @@ where
         None => std::ptr::null(),
         Some(addr) => addr as *const _,
     });
+
+    unsafe {
+        gl::Enable(gl::DEBUG_OUTPUT);
+        gl::Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS);
+        gl::DebugMessageCallback(Some(gl_debug_callback), std::ptr::null());
+    }
 
     log::debug!(
         "Loaded OpenGL v{}.{}",
@@ -204,5 +215,55 @@ fn poll_event_pump<T: Application>(engine: &mut Engine, app: &mut T, event_pump:
 
             _ => {}
         }
+    }
+}
+
+extern "system" fn gl_debug_callback(
+    source: GLenum,
+    gltype: GLenum,
+    id: GLuint,
+    severity: GLenum,
+    _length: GLsizei,
+    message: *const GLchar,
+    _user_param: *mut GLvoid,
+) {
+    let source_str = match source {
+        gl::DEBUG_SOURCE_API => "api",
+        gl::DEBUG_SOURCE_WINDOW_SYSTEM => "window system",
+        gl::DEBUG_SOURCE_SHADER_COMPILER => "shader compiler",
+        gl::DEBUG_SOURCE_THIRD_PARTY => "third party",
+        gl::DEBUG_SOURCE_APPLICATION => "application",
+        gl::DEBUG_SOURCE_OTHER => "other",
+        _ => "unknown",
+    };
+
+    let type_str = match gltype {
+        gl::DEBUG_TYPE_ERROR => "error",
+        gl::DEBUG_TYPE_DEPRECATED_BEHAVIOR => "deprecated behavior",
+        gl::DEBUG_TYPE_UNDEFINED_BEHAVIOR => "undefined behavior",
+        gl::DEBUG_TYPE_PORTABILITY => "portability",
+        gl::DEBUG_TYPE_PERFORMANCE => "performance",
+        gl::DEBUG_TYPE_MARKER => "marker",
+        gl::DEBUG_TYPE_PUSH_GROUP => "push group",
+        gl::DEBUG_TYPE_POP_GROUP => "pop group",
+        gl::DEBUG_TYPE_OTHER => "other",
+        _ => "unknown",
+    };
+
+    let message_str = unsafe {
+        std::ffi::CStr::from_ptr(message)
+            .to_str()
+            .unwrap()
+            .to_owned()
+    };
+    let log_message =
+        format!("(source: {source_str}) (type: {type_str}) (id: {id}): {message_str}");
+
+    match severity {
+        gl::DEBUG_SEVERITY_HIGH => log::error!("GLDEBUG (severity: high) {}", log_message),
+        gl::DEBUG_SEVERITY_MEDIUM => log::warn!("GLDEBUG (severity: medium) {}", log_message),
+        gl::DEBUG_SEVERITY_LOW => log::debug!("GLDEBUG (severity: low) {}", log_message),
+        gl::DEBUG_SEVERITY_NOTIFICATION => log::trace!("GLDEBUG (severity: notif) {}", log_message),
+        _ => unreachable!(),
     }
 }

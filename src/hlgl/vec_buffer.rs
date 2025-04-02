@@ -122,13 +122,21 @@ impl<T: Copy> VecBuffer<T> {
                     gl::ARRAY_BUFFER,
                     (self.data.len() * size_of::<T>()) as GLsizeiptr,
                     self.data[..self.data.len()].as_ptr().cast(),
-                    gl::STATIC_DRAW,
+                    gl::DYNAMIC_DRAW,
                 );
                 self.unbind(BindTarget::ArrayBuffer);
-                log::trace!("VecBuffer (id: {}) resized GL buffer", self.id);
             }
+
+            let old_size = self.gl_bufsize;
             self.gl_bufsize = self.data.len();
             self.gl_bufpos = self.back;
+
+            log::trace!(
+                "VecBuffer (id: {}) resized GL buffer {} -> {}",
+                self.id,
+                old_size,
+                self.gl_bufsize
+            );
         } else if self.back > self.gl_bufpos {
             unsafe {
                 self.bind(BindTarget::ArrayBuffer);
