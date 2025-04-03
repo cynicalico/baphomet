@@ -209,6 +209,7 @@ fn hue_from_rgb(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     )
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
     use approx::*;

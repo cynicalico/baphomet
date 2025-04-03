@@ -11,6 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut app = TestApp {
         title_update: Ticker::new(Duration::from_millis(100)),
+        point_timer: Ticker::new(Duration::from_millis(10)),
     };
 
     baphomet::run_app(&mut engine, &mut app);
@@ -20,6 +21,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 struct TestApp {
     title_update: Ticker,
+    point_timer: Ticker,
+}
+
+fn rand_color() -> Rgba {
+    Rgba::new(
+        rand::rng().random_range(..=255),
+        rand::rng().random_range(..=255),
+        rand::rng().random_range(..=255),
+        255,
+    )
 }
 
 impl Application for TestApp {
@@ -34,7 +45,17 @@ impl Application for TestApp {
         }
     }
 
-    fn draw(&mut self, _engine: &mut Engine) {}
+    fn draw(&mut self, engine: &mut Engine) {
+        for _ in 0..self.point_timer.tick() {
+            engine.batcher.point(
+                (
+                    rand::rng().random_range(..engine.window.size().0) as f32,
+                    rand::rng().random_range(..engine.window.size().1) as f32,
+                ),
+                &rand_color(),
+            );
+        }
+    }
 
     fn key_event(
         &mut self,
@@ -58,7 +79,7 @@ impl Application for TestApp {
 
     fn mouse_button_event(
         &mut self,
-        _engine: &mut Engine,
+        engine: &mut Engine,
         x: f32,
         y: f32,
         button: MouseButton,
@@ -66,20 +87,16 @@ impl Application for TestApp {
     ) {
         if button == MouseButton::Left && action == MouseAction::Press {
             let r = 25.0;
-            let dist = rand::distr::Uniform::new(0.0, 360.0).unwrap();
-
-            let x0 = x;
-            let y0 = y + -r;
-            let x1 = x + r * 0.866_025_4;
-            let y1 = y + r * 0.5;
-            let x2 = x + r * -0.866_025_4;
-            let y2 = y + r * 0.5;
-            let color = Rgba::hex(0xff0000ff);
-            let theta: f32 = rand::rng().sample(dist);
-
-            _engine
-                .batcher
-                .fill_tri(x0, y0, x1, y1, x2, y2, &color, x, y, theta);
+            engine.batcher.fill_tri(
+                (x, y + -r),
+                (x + r * 0.866_025_4, y + r * 0.5),
+                (x + r * -0.866_025_4, y + r * 0.5),
+                &rand_color(),
+                (x, y),
+                rand::rng().random_range(0.0..360.0),
+            );
+        } else if button == MouseButton::Right && action == MouseAction::Press {
+            engine.batcher.line((0.0, 0.0), (x, y), &rand_color());
         }
     }
 }

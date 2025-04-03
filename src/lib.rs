@@ -13,11 +13,9 @@ mod gl {
 }
 
 use crate::gfx::Batcher;
-use crate::gl::types::{GLchar, GLenum, GLuint, GLvoid};
 pub use application::*;
 pub use averagers::*;
 pub use gfx::{Hsla, Hsva, Rgba};
-use gl::types::GLsizei;
 use sdl3::EventPump;
 pub use time::*;
 
@@ -85,7 +83,10 @@ where
     let gl_attr = video_subsystem.gl_attr();
     gl_attr.set_context_profile(sdl3::video::GLProfile::Core);
     gl_attr.set_context_version(3, 3);
-    gl_attr.set_context_flags().debug().set();
+    #[cfg(debug_assertions)]
+    {
+        gl_attr.set_context_flags().debug().set();
+    }
     gl_attr.set_multisample_buffers(1);
     gl_attr.set_multisample_samples(4);
 
@@ -108,6 +109,7 @@ where
         Some(addr) => addr as *const _,
     });
 
+    #[cfg(debug_assertions)]
     unsafe {
         gl::Enable(gl::DEBUG_OUTPUT);
         gl::Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS);
@@ -210,7 +212,7 @@ fn poll_event_pump<T: Application>(engine: &mut Engine, app: &mut T, event_pump:
                 win_event: WindowEvent::PixelSizeChanged(width, height),
                 ..
             } => unsafe {
-                gl::Viewport(0, 0, width as GLsizei, height as GLsizei);
+                gl::Viewport(0, 0, width as _, height as _);
             },
 
             _ => {}
@@ -218,6 +220,10 @@ fn poll_event_pump<T: Application>(engine: &mut Engine, app: &mut T, event_pump:
     }
 }
 
+#[cfg(debug_assertions)]
+use crate::gl::types::{GLchar, GLenum, GLsizei, GLuint, GLvoid};
+
+#[cfg(debug_assertions)]
 extern "system" fn gl_debug_callback(
     source: GLenum,
     gltype: GLenum,

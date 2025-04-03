@@ -14,10 +14,10 @@ void main() {
     float ytr = -rot_params.x * s - rot_params.y * c + rot_params.y;
 
     mat4 rot = mat4(
-    vec4(c,   s,   0.0, 0.0),
-    vec4(-s,  c,   0.0, 0.0),
-    vec4(0.0, 0.0, 1.0, 0.0),
-    vec4(xtr, ytr, 0.0, 1.0)
+        vec4(c,   s,   0.0, 0.0),
+        vec4(-s,  c,   0.0, 0.0),
+        vec4(0.0, 0.0, 1.0, 0.0),
+        vec4(xtr, ytr, 0.0, 1.0)
     );
 
     out_color = color;
