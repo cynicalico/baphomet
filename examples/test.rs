@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut app = TestApp {
         title_update: Ticker::new(Duration::from_millis(100)),
-        point_timer: Ticker::new(Duration::from_millis(10)),
+        point_timer: Ticker::new(Duration::from_millis(1)),
     };
 
     baphomet::run_app(&mut engine, &mut app);

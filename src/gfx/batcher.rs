@@ -55,48 +55,36 @@ impl Default for Batcher {
     }
 }
 
+macro_rules! try_link_and_insert_shader {
+    ($shaders:ident, $kind:path, $kind_str:literal) => {
+        match ShaderBuilder::default()
+            .with_src(
+                ShaderKind::Vertex,
+                include_str!(concat!("shader_src/", $kind_str, ".vert")),
+            )
+            .with_src(
+                ShaderKind::Fragment,
+                include_str!(concat!("shader_src/", $kind_str, ".frag")),
+            )
+            .try_link()
+        {
+            Ok(shader) => {
+                $shaders.insert($kind, shader);
+            }
+            Err(_) => {
+                log::error!(concat!("Failed to link ", $kind_str, " shader"));
+            }
+        }
+    };
+}
+
 impl Batcher {
     pub fn new() -> Self {
         let mut shaders = HashMap::default();
 
-        match ShaderBuilder::default()
-            .with_src(ShaderKind::Vertex, include_str!("shader_src/points.vert"))
-            .with_src(ShaderKind::Fragment, include_str!("shader_src/points.frag"))
-            .try_link()
-        {
-            Ok(shader) => {
-                shaders.insert(BatchKind::Points, shader);
-            }
-            Err(_) => {
-                log::error!("Failed to link points shader");
-            }
-        }
-
-        match ShaderBuilder::default()
-            .with_src(ShaderKind::Vertex, include_str!("shader_src/lines.vert"))
-            .with_src(ShaderKind::Fragment, include_str!("shader_src/lines.frag"))
-            .try_link()
-        {
-            Ok(shader) => {
-                shaders.insert(BatchKind::Lines, shader);
-            }
-            Err(_) => {
-                log::error!("Failed to link lines shader");
-            }
-        }
-
-        match ShaderBuilder::default()
-            .with_src(ShaderKind::Vertex, include_str!("shader_src/tris.vert"))
-            .with_src(ShaderKind::Fragment, include_str!("shader_src/tris.frag"))
-            .try_link()
-        {
-            Ok(shader) => {
-                shaders.insert(BatchKind::Tris, shader);
-            }
-            Err(_) => {
-                log::error!("Failed to link tris shader");
-            }
-        }
+        try_link_and_insert_shader!(shaders, BatchKind::Points, "points");
+        try_link_and_insert_shader!(shaders, BatchKind::Lines, "lines");
+        try_link_and_insert_shader!(shaders, BatchKind::Tris, "tris");
 
         Self {
             batches: vec![],
@@ -131,36 +119,14 @@ impl Batcher {
     }
 
     pub fn point<T: GlColor>(&mut self, p: (f32, f32), color: &T) {
-        let needs_new_batch = match self.batches.last() {
-            Some(batch) => batch.kind != BatchKind::Points,
-            None => true,
-        };
-
-        if needs_new_batch {
-            let new_batch = self.make_batch(BatchKind::Points);
-            self.batches.push(new_batch);
-        }
-
-        let batch = self.batches.last_mut().unwrap();
-
+        let batch = self.check_get_batch(BatchKind::Points);
         let (r, g, b, _) = color.gl_color();
 
         batch.vertices.add([p.0, p.1, 0.0, r, g, b]);
     }
 
     pub fn line<T: GlColor>(&mut self, p0: (f32, f32), p1: (f32, f32), color: &T) {
-        let needs_new_batch = match self.batches.last() {
-            Some(batch) => batch.kind != BatchKind::Lines,
-            None => true,
-        };
-
-        if needs_new_batch {
-            let new_batch = self.make_batch(BatchKind::Lines);
-            self.batches.push(new_batch);
-        }
-
-        let batch = self.batches.last_mut().unwrap();
-
+        let batch = self.check_get_batch(BatchKind::Lines);
         let (r, g, b, _) = color.gl_color();
 
         #[rustfmt::skip]
@@ -179,17 +145,8 @@ impl Batcher {
         p_rot: (f32, f32),
         angle: f32,
     ) {
-        let needs_new_batch = match self.batches.last() {
-            Some(batch) => batch.kind != BatchKind::Tris,
-            None => true,
-        };
-
-        if needs_new_batch {
-            let new_batch = self.make_batch(BatchKind::Tris);
-            self.batches.push(new_batch);
-        }
-
-        let batch = self.batches.last_mut().unwrap();
+        let batch = self.check_get_batch(BatchKind::Tris);
+        let (r, g, b, _) = color.gl_color();
 
         let index_offset = (batch.vertices.size() / 9) as u32;
         batch
@@ -198,14 +155,26 @@ impl Batcher {
             .unwrap()
             .add([index_offset, index_offset + 1, index_offset + 2]);
 
-        let (r, g, b, _) = color.gl_color();
-
         #[rustfmt::skip]
         batch.vertices.add([
             p0.0, p0.1, 0.0, r, g, b, p_rot.0, p_rot.1, angle,
             p1.0, p1.1, 0.0, r, g, b, p_rot.0, p_rot.1, angle,
             p2.0, p2.1, 0.0, r, g, b, p_rot.0, p_rot.1, angle,
         ]);
+    }
+
+    fn check_get_batch(&mut self, kind: BatchKind) -> &mut Batch {
+        let needs_new_batch = match self.batches.last() {
+            Some(batch) => batch.kind != kind,
+            None => true,
+        };
+
+        if needs_new_batch {
+            let new_batch = self.make_batch(kind);
+            self.batches.push(new_batch);
+        }
+
+        self.batches.last_mut().unwrap()
     }
 
     fn make_batch(&mut self, kind: BatchKind) -> Batch {
