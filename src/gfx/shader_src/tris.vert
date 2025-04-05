@@ -1,4 +1,3 @@
-#version 330
 in vec3 pos;
 in vec3 color;
 in vec3 rot_params;
@@ -6,8 +5,11 @@ in vec3 rot_params;
 out vec3 out_color;
 
 uniform mat4 proj;
+uniform float z_max;
 
 void main() {
+    out_color = color;
+
     float c = cos(rot_params.z);
     float s = sin(rot_params.z);
     float xtr = -rot_params.x * c + rot_params.y * s + rot_params.x;
@@ -20,6 +22,6 @@ void main() {
         vec4(xtr, ytr, 0.0, 1.0)
     );
 
-    out_color = color;
-    gl_Position = proj * rot * vec4(pos, 1.0);
+    float z = -1.0 / (pos.z + z_max);
+    gl_Position = proj * rot * vec4(pos.xy, z, 1.0);
 }

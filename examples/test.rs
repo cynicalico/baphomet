@@ -11,7 +11,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut app = TestApp {
         title_update: Ticker::new(Duration::from_millis(100)),
-        point_timer: Ticker::new(Duration::from_millis(1)),
     };
 
     baphomet::run_app(&mut engine, &mut app);
@@ -21,7 +20,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 struct TestApp {
     title_update: Ticker,
-    point_timer: Ticker,
 }
 
 fn rand_color() -> Rgba {
@@ -46,8 +44,8 @@ impl Application for TestApp {
     }
 
     fn draw(&mut self, engine: &mut Engine) {
-        for _ in 0..self.point_timer.tick() {
-            engine.batcher.point(
+        for _ in 0..100 {
+            engine.g2d.point(
                 (
                     rand::rng().random_range(..engine.window.size().0) as f32,
                     rand::rng().random_range(..engine.window.size().1) as f32,
@@ -87,7 +85,7 @@ impl Application for TestApp {
     ) {
         if button == MouseButton::Left && action == MouseAction::Press {
             let r = 25.0;
-            engine.batcher.fill_tri(
+            engine.g2d.fill_tri(
                 (x, y + -r),
                 (x + r * 0.866_025_4, y + r * 0.5),
                 (x + r * -0.866_025_4, y + r * 0.5),
@@ -96,7 +94,7 @@ impl Application for TestApp {
                 rand::rng().random_range(0.0..360.0),
             );
         } else if button == MouseButton::Right && action == MouseAction::Press {
-            engine.batcher.line((0.0, 0.0), (x, y), &rand_color());
+            engine.g2d.line((0.0, 0.0), (x, y), &rand_color());
         }
     }
 }

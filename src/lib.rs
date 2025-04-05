@@ -12,7 +12,6 @@ mod gl {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
-use crate::gfx::Batcher;
 pub use application::*;
 pub use averagers::*;
 pub use gfx::{Hsla, Hsva, Rgba};
@@ -20,7 +19,7 @@ use sdl3::EventPump;
 pub use time::*;
 
 pub struct Engine {
-    pub batcher: Batcher,
+    pub g2d: gfx::G2d,
     pub frame_counter: FrameCounter,
 
     running: bool,
@@ -33,7 +32,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn window_ortho_projection(&self) -> glm::Mat4 {
-        glm::ortho(
+        glm::ortho_lh_zo(
             0.0,
             self.window.size().0 as f32,
             self.window.size().1 as f32,
@@ -124,7 +123,7 @@ where
 
     Ok(Engine {
         window,
-        batcher: Batcher::default(),
+        g2d: gfx::G2d::new(gl_attr.context_version()),
         frame_counter: FrameCounter::default(),
         sdl: sdl_context,
         ctx,
@@ -149,7 +148,7 @@ pub fn run_app<T: Application>(engine: &mut Engine, app: &mut T) {
 
         app.draw(engine);
 
-        engine.batcher.draw(&engine.window_ortho_projection());
+        engine.g2d.draw(&engine.window_ortho_projection());
 
         engine.window.gl_swap_window();
 

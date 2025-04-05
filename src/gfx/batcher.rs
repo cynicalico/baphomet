@@ -1,5 +1,4 @@
 use crate::{
-    gfx::color::GlColor,
     gl,
     gl::types::{GLenum, GLsizei},
     hlgl::{
@@ -49,22 +48,18 @@ pub struct Batcher {
     shaders: HashMap<BatchKind, Shader>,
 }
 
-impl Default for Batcher {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 macro_rules! try_link_and_insert_shader {
-    ($shaders:ident, $kind:path, $kind_str:literal) => {
+    ($shaders:ident, $gl_version:ident, $kind:path, $kind_str:literal) => {
+        let version_directive = format!("#version {}{}0 core\n", $gl_version.0, $gl_version.1);
         match ShaderBuilder::default()
             .with_src(
                 ShaderKind::Vertex,
-                include_str!(concat!("shader_src/", $kind_str, ".vert")),
+                &(version_directive.clone()
+                    + include_str!(concat!("shader_src/", $kind_str, ".vert"))),
             )
             .with_src(
                 ShaderKind::Fragment,
-                include_str!(concat!("shader_src/", $kind_str, ".frag")),
+                &(version_directive + include_str!(concat!("shader_src/", $kind_str, ".frag"))),
             )
             .try_link()
         {
@@ -79,12 +74,12 @@ macro_rules! try_link_and_insert_shader {
 }
 
 impl Batcher {
-    pub fn new() -> Self {
+    pub fn new(gl_version: (u8, u8)) -> Self {
         let mut shaders = HashMap::default();
 
-        try_link_and_insert_shader!(shaders, BatchKind::Points, "points");
-        try_link_and_insert_shader!(shaders, BatchKind::Lines, "lines");
-        try_link_and_insert_shader!(shaders, BatchKind::Tris, "tris");
+        try_link_and_insert_shader!(shaders, gl_version, BatchKind::Points, "points");
+        try_link_and_insert_shader!(shaders, gl_version, BatchKind::Lines, "lines");
+        try_link_and_insert_shader!(shaders, gl_version, BatchKind::Tris, "tris");
 
         Self {
             batches: vec![],
@@ -92,11 +87,12 @@ impl Batcher {
         }
     }
 
-    pub fn draw(&mut self, proj: &glm::Mat4) {
+    pub fn draw(&mut self, proj: &glm::Mat4, z_max: f32) {
         for batch in &mut self.batches {
             if let Some(shader) = self.shaders.get_mut(&batch.kind) {
                 shader.use_program();
                 shader.uniform_mat("proj", false, proj);
+                shader.uniform_1("z_max", z_max);
             }
 
             batch.sync();
@@ -118,35 +114,34 @@ impl Batcher {
         }
     }
 
-    pub fn point<T: GlColor>(&mut self, p: (f32, f32), color: &T) {
+    pub fn point(&mut self, z: f32, p: (f32, f32), color: (f32, f32, f32, f32)) {
         let batch = self.check_get_batch(BatchKind::Points);
-        let (r, g, b, _) = color.gl_color();
 
-        batch.vertices.add([p.0, p.1, 0.0, r, g, b]);
+        batch.vertices.add([p.0, p.1, z, color.0, color.1, color.2]);
     }
 
-    pub fn line<T: GlColor>(&mut self, p0: (f32, f32), p1: (f32, f32), color: &T) {
+    pub fn line(&mut self, z: f32, p0: (f32, f32), p1: (f32, f32), color: (f32, f32, f32, f32)) {
         let batch = self.check_get_batch(BatchKind::Lines);
-        let (r, g, b, _) = color.gl_color();
 
         #[rustfmt::skip]
         batch.vertices.add([
-            p0.0, p0.1, 0.0, r, g, b,
-            p1.0, p1.1, 0.0, r, g, b,
+            p0.0, p0.1, z, color.0, color.1, color.2,
+            p1.0, p1.1, z, color.0, color.1, color.2,
         ]);
     }
 
-    pub fn fill_tri<T: GlColor>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn fill_tri(
         &mut self,
+        z: f32,
         p0: (f32, f32),
         p1: (f32, f32),
         p2: (f32, f32),
-        color: &T,
+        color: (f32, f32, f32, f32),
         p_rot: (f32, f32),
         angle: f32,
     ) {
         let batch = self.check_get_batch(BatchKind::Tris);
-        let (r, g, b, _) = color.gl_color();
 
         let index_offset = (batch.vertices.size() / 9) as u32;
         batch
@@ -157,9 +152,9 @@ impl Batcher {
 
         #[rustfmt::skip]
         batch.vertices.add([
-            p0.0, p0.1, 0.0, r, g, b, p_rot.0, p_rot.1, angle,
-            p1.0, p1.1, 0.0, r, g, b, p_rot.0, p_rot.1, angle,
-            p2.0, p2.1, 0.0, r, g, b, p_rot.0, p_rot.1, angle,
+            p0.0, p0.1, z, color.0, color.1, color.2, p_rot.0, p_rot.1, angle,
+            p1.0, p1.1, z, color.0, color.1, color.2, p_rot.0, p_rot.1, angle,
+            p2.0, p2.1, z, color.0, color.1, color.2, p_rot.0, p_rot.1, angle,
         ]);
     }
 
