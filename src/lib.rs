@@ -86,8 +86,8 @@ where
     {
         gl_attr.set_context_flags().debug().set();
     }
-    gl_attr.set_multisample_buffers(1);
-    gl_attr.set_multisample_samples(4);
+    // gl_attr.set_multisample_buffers(1);
+    // gl_attr.set_multisample_samples(4);
 
     let mut builder = video_subsystem.window(title, width, height);
     let window = window_build_fn(&mut builder)
@@ -95,9 +95,10 @@ where
         .opengl()
         .build()?;
     log::debug!(
-        "Opened window (size: {:?}, pixel size: {:?})",
+        "Opened window (size: {:?}, pixel size: {:?}, display_scale: {})",
         window.size(),
-        window.size_in_pixels()
+        window.size_in_pixels(),
+        window.display_scale(),
     );
 
     let ctx = window.gl_create_context()?;
@@ -113,6 +114,11 @@ where
         gl::Enable(gl::DEBUG_OUTPUT);
         gl::Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS);
         gl::DebugMessageCallback(Some(gl_debug_callback), std::ptr::null());
+    }
+
+    unsafe {
+        gl::PointSize(window.display_scale());
+        gl::LineWidth(window.display_scale());
     }
 
     log::debug!(

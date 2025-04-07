@@ -11,6 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut app = TestApp {
         title_update: Ticker::new(Duration::from_millis(100)),
+        point_timer: Ticker::new(Duration::from_millis(250)),
     };
 
     baphomet::run_app(&mut engine, &mut app);
@@ -20,6 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 struct TestApp {
     title_update: Ticker,
+    point_timer: Ticker,
 }
 
 fn rand_color() -> Rgba {
@@ -44,7 +46,7 @@ impl Application for TestApp {
     }
 
     fn draw(&mut self, engine: &mut Engine) {
-        for _ in 0..100 {
+        for _ in 0..self.point_timer.tick() {
             engine.g2d.point(
                 (
                     rand::rng().random_range(..engine.window.size().0) as f32,
