@@ -218,6 +218,8 @@ fn poll_event_pump<T: Application>(engine: &mut Engine, app: &mut T, event_pump:
                 ..
             } => unsafe {
                 gl::Viewport(0, 0, width as _, height as _);
+                gl::PointSize(engine.window.display_scale());
+                gl::LineWidth(engine.window.display_scale());
             },
 
             _ => {}
